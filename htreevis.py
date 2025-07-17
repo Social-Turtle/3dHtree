@@ -61,7 +61,13 @@ class HTree3D:
             pos_side = (x, y, z + half_size)
 
         ### Let's Make Some Recursive Calls! ###
-        next_size = size * self.scale_factor
+        if len(blueprint) >= 3:
+            if blueprint[2] == blueprint[0]:
+                next_size = size * 0.7071 
+            else:
+                next_size = size * 0.7937
+        else:
+            next_size = size * self.scale_factor
 
         self.add_line(sub_side,pos_side, layer, add_nodes)
         self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
@@ -380,7 +386,7 @@ def main():
                     print("Please enter a number between 1 and 21.")
             except ValueError:
                 print("Please enter a valid number.")
-        
+    """    
     print("\nChoose scale factor:")
     print("1. 0.7937 (default - cube root of 1/2)")
     print("2. 0.7071 (sqrt(2)/2)")
@@ -406,7 +412,8 @@ def main():
                 print("Please enter 1, 2, or 3.")
         except ValueError:
             print("Please enter a valid number.")
-
+    """
+    scale_factor = 1
     print("\nChoose projection type:")
     print("1. Isometric")
     print("2. Perspective")

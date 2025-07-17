@@ -20,7 +20,18 @@ class HTree3D:
         self.points = []  # Store all points for reference
         self.colors = ['red', 'orange', 'green']  # Color cycle
         self.scale_factor = scale_factor  # Scale factor for H-tree arms
-        
+
+    def gen_configurable_htree(self, center: Tuple[float, float, float], size: float, blueprint: str) -> None:
+        """
+        Generate a configurable H-tree based on a blueprint string.
+        """
+        # Parse the blueprint string
+        levels = len(blueprint)
+        for char in blueprint:
+            if char not in '012xyz':
+                raise ValueError(f"Invalid character '{char}' in blueprint. Use digits 0-2 or xyz only.")
+        # Now that we know the input is valid, let's build something cool.
+
     def generate_htree(self, center: Tuple[float, float, float], 
                       size: float, levels: int, 
                       orientation: str = 'xy') -> None:
@@ -448,21 +459,26 @@ def main():
     print("===================")
     
     # Get user input for number of levels
-    while True:
-        try:
-            levels = input("Enter number of levels (1-21, default=6): ").strip()
-            if levels == "":
-                levels = 6
-            else:
-                levels = int(levels)
-            
-            if 1 <= levels <= 21:
-                break
-            else:
-                print("Please enter a number between 1 and 21.")
-        except ValueError:
-            print("Please enter a valid number.")
-    
+
+    generate_style = input("Select your tree generation type (1 = configurable, 0 = cubioid, default = 0) ")
+    if generate_style == "1":
+        print("Custom Htree coming right up!")
+    else:
+        while True:
+            try:
+                levels = input("Enter number of levels (1-21, default=6): ").strip()
+                if levels == "":
+                    levels = 6
+                else:
+                    levels = int(levels)
+                
+                if 1 <= levels <= 21:
+                    break
+                else:
+                    print("Please enter a number between 1 and 21.")
+            except ValueError:
+                print("Please enter a valid number.")
+        
     # Get user input for scale factor
     print("\nChoose scale factor:")
     print("1. 0.7937 (default - cube root of 1/2)")
@@ -514,7 +530,7 @@ def main():
     
     # Create and display the visualization
     fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor, isometric=isometric)
-    
+
     print("Opening interactive 3D visualization...")
     print("You can:")
     print("- Rotate: Click and drag")

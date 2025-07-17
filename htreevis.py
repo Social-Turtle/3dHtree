@@ -205,7 +205,8 @@ class HTree3D:
         if layer < max_layers:
             self.points.extend([(point1, layer), (point2, layer)])
 
-    def create_plotly_figure(self, title: str = "3D H-Tree Visualization") -> go.Figure:
+    def create_plotly_figure(self, title: str = "3D H-Tree Visualization", 
+                           isometric: bool = False) -> go.Figure:
         """
         Create a Plotly 3D figure from the generated H-tree.
         
@@ -358,6 +359,7 @@ class HTree3D:
                     tickfont=dict(color='white')
                 ),
                 camera=dict(
+                    projection=dict(type="orthographic" if isometric else "perspective"),
                     eye=dict(x=1.5, y=1.5, z=1.5)
                 ),
                 aspectmode='cube'  # Keeps proportions correct
@@ -383,7 +385,8 @@ class HTree3D:
         self.lines.clear()
         self.points.clear()
 
-def create_htree_visualization(levels: int = 4, size: float = 2.0, scale_factor: float = 0.7937) -> go.Figure:
+def create_htree_visualization(levels: int = 4, size: float = 2.0, 
+                             scale_factor: float = 0.7937, isometric: bool = False) -> go.Figure:
     """
     Convenience function to create and visualize an H-tree.
     
@@ -391,6 +394,7 @@ def create_htree_visualization(levels: int = 4, size: float = 2.0, scale_factor:
         levels: Number of levels (1-6 recommended)
         size: Size of the initial H
         scale_factor: Scale factor for recursive branches (0.7937 default, 0.7071 alternative)
+        isometric: Whether to use isometric (orthographic) projection
     
     Returns:
         Plotly Figure object
@@ -398,8 +402,9 @@ def create_htree_visualization(levels: int = 4, size: float = 2.0, scale_factor:
     htree = HTree3D(scale_factor=scale_factor)
     htree.generate_htree((0, 0, 0), size, levels)
     
-    title = f"3D H-Tree with {levels} levels (scale: {scale_factor:.4f})"
-    return htree.create_plotly_figure(title)
+    projection_type = "Isometric" if isometric else "Perspective"
+    title = f"3D H-Tree with {levels} levels ({projection_type}, scale: {scale_factor:.4f})"
+    return htree.create_plotly_figure(title, isometric)
 
 def show_with_dark_background(fig: go.Figure):
     """
@@ -485,10 +490,30 @@ def main():
         except ValueError:
             print("Please enter a valid number.")
 
-    print(f"\nGenerating 3D H-tree with {levels} levels and scale factor {scale_factor:.4f}...")
+    # Get user input for projection type
+    print("\nChoose projection type:")
+    print("1. Perspective (default - natural 3D view with depth)")
+    print("2. Isometric (orthographic - technical drawing style)")
+    
+    while True:
+        try:
+            projection_choice = input("Enter choice (1-2, default=1): ").strip()
+            if projection_choice == "" or projection_choice == "1":
+                isometric = False
+                break
+            elif projection_choice == "2":
+                isometric = True
+                break
+            else:
+                print("Please enter 1 or 2.")
+        except ValueError:
+            print("Please enter a valid number.")
+
+    projection_type = "Isometric" if isometric else "Perspective"
+    print(f"\nGenerating 3D H-tree with {levels} levels, {projection_type.lower()} projection, and scale factor {scale_factor:.4f}...")
     
     # Create and display the visualization
-    fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor)
+    fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor, isometric=isometric)
     
     print("Opening interactive 3D visualization...")
     print("You can:")
@@ -503,7 +528,8 @@ def main():
     # Optional: Save as HTML file
     save_html = input("\nSave as HTML file? (y/n, default=n): ").strip().lower()
     if save_html in ['y', 'yes']:
-        filename = f"htree_3d_{levels}_levels.html"
+        projection_suffix = "_isometric" if isometric else "_perspective"
+        filename = f"htree_3d_{levels}_levels{projection_suffix}.html"
         fig.write_html(filename)
         print(f"Saved as {filename}")
 

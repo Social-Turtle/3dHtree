@@ -70,7 +70,6 @@ class HTree3D:
             add_nodes = layer + 1
         x, y, z = center
         half_size = size * 0.5
-        second_half_size = half_size * self.scale_factor
         orientation = blueprint[0]
         if orientation == '0': ### X DIRECTION ###
             sub_side = (x, y-half_size, z)
@@ -84,7 +83,7 @@ class HTree3D:
             pos_side = (x, y, z + half_size)
 
         ### Let's Make Some Recursive Calls! ###
-        next_size = size * self.scale_factor * self.scale_factor
+        next_size = size * self.scale_factor
 
         self.add_line(sub_side,pos_side, layer, add_nodes)
         self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)

@@ -248,6 +248,28 @@ class HTree3D:
             all_sizes = []
             all_colors = []
             
+            # Create a mapping from junction points to the orientation of the line they sit at the center of
+            junction_center_orientations = {}
+            for line in self.lines:
+                x1, y1, z1, x2, y2, z2, layer = line
+                
+                # Determine line orientation
+                if abs(x1 - x2) > 1e-10:
+                    orientation = 'x'
+                elif abs(y1 - y2) > 1e-10:
+                    orientation = 'y'
+                elif abs(z1 - z2) > 1e-10:
+                    orientation = 'z'
+                else:
+                    continue
+                
+                # Calculate the midpoint of this line
+                midpoint = ((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
+                midpoint_key = (round(midpoint[0], 10), round(midpoint[1], 10), round(midpoint[2], 10))
+                
+                # Map this midpoint to the orientation of the line it's the center of
+                junction_center_orientations[midpoint_key] = orientation
+            
             # Group points by layer and calculate sizes
             points_by_layer = {}
             for point_data in all_points:
@@ -273,14 +295,17 @@ class HTree3D:
                 junction_size = base_size * (0.9 ** (layer - 1))  # Same scaling as line width
                 junction_size = max(junction_size, 1)  # Minimum size of 1
                 
-                # Get color for this layer (same as lines)
-                if layer == 0:
-                    color = 'red'
-                else:
-                    color = self.colors[(layer) % len(self.colors)]
-                
                 # Add to combined arrays
                 for point in points:
+                    point_key = (round(point[0], 10), round(point[1], 10), round(point[2], 10))
+                    
+                    # Determine junction color based on the line it sits at the center of
+                    if point_key in junction_center_orientations:
+                        orientation = junction_center_orientations[point_key]
+                        color = orientation_colors[orientation]
+                    else:
+                        color = 'white'  # Fallback for points not at center of any line
+                                                
                     all_x_points.append(point[0])
                     all_y_points.append(point[1])
                     all_z_points.append(point[2])

@@ -132,7 +132,7 @@ class HTree3D:
                 z_lines.extend([z1, z2, None])
             
             # Use consistent line width for all orientations
-            base_width = 6
+            base_width = 12
             color = orientation_colors[orientation]
             
             fig.add_trace(go.Scatter3d(
@@ -142,14 +142,13 @@ class HTree3D:
                 mode='lines',
                 line=dict(
                     color=color,
-                    width=base_width
+                    width=max(base_width*(0.75**(layer-1)),1)
                 ),
                 name=f'Layer {layer} ({orientation_names[orientation]})',
                 hoverinfo='skip'
             ))
         
-        # Add junction points for better visualization
-        all_points = list(set(self.points))  # Remove duplicates
+        all_points = list(set(self.points))
         if all_points:
             # Collect all junction points and their sizes/colors for a single trace
             all_x_points = []
@@ -203,7 +202,7 @@ class HTree3D:
                 
                 # Calculate junction size: scale with line width
                 junction_size = base_size * (0.9 ** (layer - 1))  # Same scaling as line width
-                junction_size = max(junction_size, 1)  # Minimum size of 1
+
                 
                 # Add to combined arrays
                 for point in points:
@@ -294,11 +293,6 @@ class HTree3D:
         )
         
         return fig
-    
-    def clear(self) -> None:
-        """Clear all stored lines and points."""
-        self.lines.clear()
-        self.points.clear()
 
 def visualize_custom_htree(size: float = 2.0, scale_factor: float = 0.7937, isometric: bool = False, blueprint: str = "") -> go.Figure:
     htree = HTree3D(scale_factor=scale_factor)

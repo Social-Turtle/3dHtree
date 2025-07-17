@@ -179,31 +179,51 @@ class HTree3D:
         # Create the 3D line plot
         fig = go.Figure()
         
-        # Group lines by layer for color coding
-        lines_by_layer = {}
+        # Group lines by orientation for color coding
+        # Red for X-direction, Orange for Y-direction, Green for Z-direction
+        orientation_colors = {
+            'x': 'red',
+            'y': 'orange', 
+            'z': 'green'
+        }
+        
+        # Group lines by both orientation and layer for individual control
+        lines_by_orientation_and_layer = {}
+        
         for line in self.lines:
             x1, y1, z1, x2, y2, z2, layer = line
-            if layer not in lines_by_layer:
-                lines_by_layer[layer] = []
-            lines_by_layer[layer].append((x1, y1, z1, x2, y2, z2))
+            
+            # Determine orientation by checking which coordinate varies
+            if abs(x1 - x2) > 1e-10:  # Line varies in X dimension
+                orientation = 'x'
+            elif abs(y1 - y2) > 1e-10:  # Line varies in Y dimension
+                orientation = 'y'
+            elif abs(z1 - z2) > 1e-10:  # Line varies in Z dimension
+                orientation = 'z'
+            else:
+                continue  # Skip degenerate lines (shouldn't happen)
+            
+            key = (orientation, layer)
+            if key not in lines_by_orientation_and_layer:
+                lines_by_orientation_and_layer[key] = []
+            lines_by_orientation_and_layer[key].append((x1, y1, z1, x2, y2, z2))
         
-        # Add traces for each layer with different colors
-        for layer in sorted(lines_by_layer.keys()):
+        # Add traces for each orientation/layer combination
+        orientation_names = {'x': 'X', 'y': 'Y', 'z': 'Z'}
+        
+        # Sort by layer first, then by orientation to preserve layer order
+        for (orientation, layer), lines in sorted(lines_by_orientation_and_layer.items(), key=lambda x: (x[0][1], x[0][0])):
             x_lines, y_lines, z_lines = [], [], []
             
-            for line in lines_by_layer[layer]:
-                x1, y1, z1, x2, y2, z2 = line
+            for line_data in lines:
+                x1, y1, z1, x2, y2, z2 = line_data
                 x_lines.extend([x1, x2, None])  # None creates breaks between lines
                 y_lines.extend([y1, y2, None])
                 z_lines.extend([z1, z2, None])
             
-            # Get color for this layer (cycle through colors)
-            color = self.colors[(layer - 1) % len(self.colors)]
-            
-            # Calculate line width: each level is progressively thinner
-            base_width = 8  # Starting thickness for level 1
-            width = base_width * (0.85 ** (layer - 1))  # Each level is 70% of previous
-            width = max(width, 1)  # Minimum width of 1
+            # Use consistent line width for all orientations
+            base_width = 6
+            color = orientation_colors[orientation]
             
             fig.add_trace(go.Scatter3d(
                 x=x_lines,
@@ -212,9 +232,9 @@ class HTree3D:
                 mode='lines',
                 line=dict(
                     color=color,
-                    width=width
+                    width=base_width
                 ),
-                name=f'Level {layer}',
+                name=f'Layer {layer} ({orientation_names[orientation]})',
                 hoverinfo='skip'
             ))
         
@@ -250,14 +270,14 @@ class HTree3D:
                 points = points_by_layer[layer]
                 
                 # Calculate junction size: scale with line width
-                junction_size = base_size * (0.8 ** (layer - 1))  # Same scaling as line width
+                junction_size = base_size * (0.9 ** (layer - 1))  # Same scaling as line width
                 junction_size = max(junction_size, 1)  # Minimum size of 1
                 
                 # Get color for this layer (same as lines)
                 if layer == 0:
                     color = 'red'
                 else:
-                    color = self.colors[(layer - 1) % len(self.colors)]
+                    color = self.colors[(layer) % len(self.colors)]
                 
                 # Add to combined arrays
                 for point in points:

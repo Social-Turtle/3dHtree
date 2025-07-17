@@ -35,28 +35,6 @@ class HTree3D:
         
         # Now that we know the input is valid, let's build something cool.
 
-    def generate_htree(self, center: Tuple[float, float, float], 
-                      size: float, levels: int, 
-                      orientation: str = 'xy') -> None:
-        """
-        Generate a 3D H-tree level by level.
-        
-        Level 1: Center line
-        Level 2: Perpendicular lines (making first H)
-        Level 3+: Lines at the endpoints, continuing the pattern
-        
-        Args:
-            center: (x, y, z) center point
-            size: Length of the H arms
-            levels: Total number of levels to generate
-            orientation: 'xy', 'xz', or 'yz' - which plane the lines lie in
-        """
-        if levels <= 0:
-            return
-            
-        # Generate all levels progressively
-        self._generate_level_recursive(center, size, levels, orientation, 1)
-    
     def _configurable_generate_level(self,center, size, blueprint, layer) -> None:
         """Recursive structure for building abritrarily oriented (but legal) 3d htrees
         each layer passes a 1-shorter slice of instructions to the next set of levels.
@@ -74,7 +52,7 @@ class HTree3D:
         if orientation == '0': ### X DIRECTION ###
             sub_side = (x, y-half_size, z)
             pos_side = (x, y+half_size, z)
-            #self.add_line((x, y - half_size, z), (x, y + half_size, z), layer, add_nodes)
+
         elif orientation == '1': ### Y DIRECTION ###
             sub_side = (x - half_size, y, z)
             pos_side = (x + half_size, y, z)
@@ -89,74 +67,6 @@ class HTree3D:
         self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
         self._configurable_generate_level(pos_side, next_size, blueprint[1:], layer+1)
 
-    def _generate_level_recursive(self, center: Tuple[float, float, float], 
-                                 size: float, max_levels: int, 
-                                 orientation: str, current_level: int) -> None:
-        """
-        Internal recursive method to generate H-tree levels correctly.
-        """
-        if current_level > max_levels:
-            return
-
-        x, y, z = center
-        half_size = size * 0.5
-        second_half_size = half_size * self.scale_factor
-
-        # Draw the main line for this orientation
-        if orientation == 'xy':
-            self.add_line((x, y - half_size, z), (x, y + half_size, z), current_level, max_levels)
-        elif orientation == 'xz':
-            self.add_line((x - half_size, y, z), (x + half_size, y, z), current_level, max_levels)
-        elif orientation == 'yz':
-            self.add_line((x, y, z - half_size), (x, y, z + half_size), current_level, max_levels)
-
-        # If we've reached the last level, stop
-        if current_level == max_levels:
-            return
-
-        # Draw the two perpendicular lines at the ends, and recurse
-        if orientation == 'xy':
-            # Horizontal lines at top and bottom
-            self.add_line((x - second_half_size, y + half_size, z), (x + second_half_size, y + half_size, z), current_level + 1, max_levels)
-            self.add_line((x - second_half_size, y - half_size, z), (x + second_half_size, y - half_size, z), current_level + 1, max_levels)
-            endpoints = [
-                (x - second_half_size, y + half_size, z),
-                (x + second_half_size, y + half_size, z),
-                (x - second_half_size, y - half_size, z),
-                (x + second_half_size, y - half_size, z)
-            ]
-            next_orient = 'yz'
-        elif orientation == 'xz':
-            # Vertical lines at left and right
-            self.add_line((x - half_size, y, z + second_half_size), (x - half_size, y, z - second_half_size), current_level + 1, max_levels)
-            self.add_line((x + half_size, y, z + second_half_size), (x + half_size, y, z - second_half_size), current_level + 1, max_levels)
-            endpoints = [
-                (x - half_size, y, z + second_half_size),
-                (x + half_size, y, z + second_half_size),
-                (x - half_size, y, z - second_half_size),
-                (x + half_size, y, z - second_half_size)
-            ]
-            next_orient = 'xy'
-        elif orientation == 'yz':
-            # Horizontal lines at front and back
-            self.add_line((x, y - second_half_size, z + half_size), (x, y + second_half_size, z + half_size), current_level + 1, max_levels)
-            self.add_line((x, y - second_half_size, z - half_size), (x, y + second_half_size, z - half_size), current_level + 1, max_levels)
-            endpoints = [
-                (x, y - second_half_size, z + half_size),
-                (x, y + second_half_size, z + half_size),
-                (x, y - second_half_size, z - half_size),
-                (x, y + second_half_size, z - half_size)
-            ]
-            next_orient = 'xz'
-        else:
-            return
-
-        # Recurse for each endpoint
-        if current_level + 1 < max_levels:
-            next_size = size * self.scale_factor * self.scale_factor
-            for endpoint in endpoints:
-                self._generate_level_recursive(endpoint, next_size, max_levels, next_orient, current_level + 2)
-    
     def add_line(self, point1: Tuple[float, float, float], 
                  point2: Tuple[float, float, float], layer: int, max_layers: int) -> None:
         """Add a line segment to the tree."""
@@ -398,32 +308,7 @@ def visualize_custom_htree(size: float = 2.0, scale_factor: float = 0.7937, isom
     title = f"3D H-Tree with {len(blueprint)} levels ({projection_type}, scale: {scale_factor:.4f})"
     return htree.create_plotly_figure(title, isometric)
 
-def create_htree_visualization(levels: int = 4, size: float = 2.0, 
-                             scale_factor: float = 0.7937, isometric: bool = False) -> go.Figure:
-    """
-    Convenience function to create and visualize an H-tree.
-    
-    Args:
-        levels: Number of levels (1-6 recommended)
-        size: Size of the initial H
-        scale_factor: Scale factor for recursive branches (0.7937 default, 0.7071 alternative)
-        isometric: Whether to use isometric (orthographic) projection
-    
-    Returns:
-        Plotly Figure object
-    """
-    htree = HTree3D(scale_factor=scale_factor)
-    htree.generate_htree((0, 0, 0), size, levels)
-    
-    projection_type = "Isometric" if isometric else "Perspective"
-    title = f"3D H-Tree with {levels} levels ({projection_type}, scale: {scale_factor:.4f})"
-    return htree.create_plotly_figure(title, isometric)
-
 def show_with_dark_background(fig: go.Figure):
-    """
-    Show the figure with a full-page dark background by creating a properly styled HTML file.
-    """
-    # Create a dark-themed HTML file for full-page viewing
     html_content = fig.to_html(include_plotlyjs='cdn')
     
     # Inject dark background CSS
@@ -441,8 +326,7 @@ def show_with_dark_background(fig: go.Figure):
         }
     </style>
     """
-    
-    # Insert CSS into the HTML head section
+
     html_content = html_content.replace('<head>', '<head>' + dark_css)
     
     # Save to a temporary file and open it
@@ -454,13 +338,9 @@ def show_with_dark_background(fig: go.Figure):
     webbrowser.open(f'file://{temp_path}')
 
 def main():
-    """
-    Main function to demonstrate the H-tree visualizer.
-    """
+
     print("3D H-Tree Visualizer")
     print("===================")
-    
-    # Get user input for number of levels
 
     generate_style = input("Select your tree generation type (1 = configurable, 0 = cubioid, default = 0) ").strip()
     
@@ -507,7 +387,6 @@ def main():
             except ValueError:
                 print("Please enter a valid number.")
         
-    # Get user input for scale factor
     print("\nChoose scale factor:")
     print("1. 0.7937 (default - cube root of 1/2)")
     print("2. 0.7071 (sqrt(2)/2)")
@@ -534,45 +413,36 @@ def main():
         except ValueError:
             print("Please enter a valid number.")
 
-    # Get user input for projection type
     print("\nChoose projection type:")
-    print("1. Perspective (default - natural 3D view with depth)")
-    print("2. Isometric (orthographic - technical drawing style)")
+    print("1. Isometric")
+    print("2. Perspective")
     
     while True:
         try:
             projection_choice = input("Enter choice (1-2, default=1): ").strip()
-            if projection_choice == "" or projection_choice == "1":
+            if projection_choice == "2":
                 isometric = False
                 break
-            elif projection_choice == "2":
+            else:
                 isometric = True
                 break
-            else:
-                print("Please enter 1 or 2.")
         except ValueError:
             print("Please enter a valid number.")
 
     projection_type = "Isometric" if isometric else "Perspective"
     print(f"\nGenerating 3D H-tree with {levels} levels, {projection_type.lower()} projection, and scale factor {scale_factor:.4f}...")
     
-    # Create and display the visualization
-    if generate_style == "1":
-        fig = visualize_custom_htree(size=2.0, scale_factor=scale_factor, isometric=isometric, blueprint=final_blueprint)
-    else:
-        fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor, isometric=isometric)
+    if generate_style != "1":
+        final_blueprint = ""
+        for i in range(levels):
+            final_blueprint += str(i % 3)
+    
+    fig = visualize_custom_htree(size=2.0, scale_factor=scale_factor, isometric=isometric, blueprint=final_blueprint)
 
     print("Opening interactive 3D visualization...")
-    print("You can:")
-    print("- Rotate: Click and drag")
-    print("- Zoom: Mouse wheel or zoom controls")
-    print("- Pan: Shift + click and drag")
-    print("- Reset view: Double-click")
-    
-    # Show the interactive plot with full-page dark background
+
     show_with_dark_background(fig)
     
-    # Optional: Save as HTML file
     save_html = input("\nSave as HTML file? (y/n, default=n): ").strip().lower()
     if save_html in ['y', 'yes']:
         projection_suffix = "_isometric" if isometric else "_perspective"

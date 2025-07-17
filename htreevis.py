@@ -460,9 +460,32 @@ def main():
     
     # Get user input for number of levels
 
-    generate_style = input("Select your tree generation type (1 = configurable, 0 = cubioid, default = 0) ")
+    generate_style = input("Select your tree generation type (1 = configurable, 0 = cubioid, default = 0) ").strip()
     if generate_style == "1":
-        print("Custom Htree coming right up!")
+        print("\nDefine your Htree as a no-space string, starting from the core dimension.")
+        print("0,x,X = x-dimension")
+        print("1,y,Y = y-dimension")
+        print("2,z,Z = z-dimension")
+        while True:
+            try:
+                input_blueprint = input("Enter htree as a no-space string: ").strip()
+                standardized_blueprint = ""
+                for ch in input_blueprint:
+                    if ch in set("0xX"):
+                        standardized_blueprint += "0"
+                    elif ch in set("1yY"):
+                        standardized_blueprint += "1"
+                    elif ch in set("2zZ"):
+                        standardized_blueprint += "2"
+                    else:
+                        raise ValueError("At least one value is invalid. The only acceptable characters are 0,1,2,x,y,z,X,Y,Z.")
+                        
+                for i, char in enumerate(standardized_blueprint):
+                    if i > 0 and char == standardized_blueprint[i - 1]:
+                        raise ValueError(f"Character '{char}' is repeated immediately at position {i}. No immediate repeats allowed.")
+                break
+            except ValueError as e:
+                print(e)
     else:
         while True:
             try:
@@ -529,7 +552,10 @@ def main():
     print(f"\nGenerating 3D H-tree with {levels} levels, {projection_type.lower()} projection, and scale factor {scale_factor:.4f}...")
     
     # Create and display the visualization
-    fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor, isometric=isometric)
+    if generate_style == "1":
+        print("ooohhhh pretty htree!")
+    else:
+        fig = create_htree_visualization(levels=levels, size=2.0, scale_factor=scale_factor, isometric=isometric)
 
     print("Opening interactive 3D visualization...")
     print("You can:")

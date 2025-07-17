@@ -9,7 +9,7 @@ import os
 
 class HTree3D:
     """
-    A 3D H-tree (Hilbert tree) visualizer using Plotly.
+    A 3D H-tree visualizer using Plotly.
     
     An H-tree is a fractal tree structure where each node has an H-shape,
     and each branch recursively contains smaller H-shapes.
@@ -27,9 +27,12 @@ class HTree3D:
         """
         # Parse the blueprint string
         levels = len(blueprint)
-        for char in blueprint:
-            if char not in '012xyz':
-                raise ValueError(f"Invalid character '{char}' in blueprint. Use digits 0-2 or xyz only.")
+
+        if levels <= 0:
+            return
+        
+        self._configurable_generate_level(center, size, blueprint)
+        
         # Now that we know the input is valid, let's build something cool.
 
     def generate_htree(self, center: Tuple[float, float, float], 
@@ -54,6 +57,16 @@ class HTree3D:
         # Generate all levels progressively
         self._generate_level_recursive(center, size, levels, orientation, 1)
     
+    def _configurable_generate_level(self,center, size, blueprint) -> None:
+        """Recursive structure for building abritrarily oriented (but legal) 3d htrees
+        each layer passes a 1-shorter slice of instructions to the next set of levels.
+        """
+        if blueprint == "":
+            return
+        x, y, z = center
+        half_size = size * 0.5
+        second_half_size = half_size * self.scale_factor
+
     def _generate_level_recursive(self, center: Tuple[float, float, float], 
                                  size: float, max_levels: int, 
                                  orientation: str, current_level: int) -> None:

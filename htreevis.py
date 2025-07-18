@@ -14,6 +14,8 @@ RATIO = 0.7071;
 X_SIZE = 2.5;
 Y_SIZE = 2.5;
 Z_SIZE = 2.5;
+WIRE_LENGTH = 0;
+ADDED_WIRE = 0;
 
 class HTree3D:
     """
@@ -40,14 +42,34 @@ class HTree3D:
         if levels <= 0:
             return
         
+        self._compute_path_length(size, blueprint)
+
         self._configurable_generate_level(center, size, blueprint, 0)
         
         # Now that we know the input is valid, let's build something cool.
 
+    def _compute_path_length(self, size: float = 2.0, blueprint: str = ""):
+        global WIRE_LENGTH;
+        global LAYER_HEIGHT;
+        global RATIO;
+        global ADDED_WIRE;
+
+        x = set('0xX');
+        y = set('1yY');
+        z = set('2zZ');
+        for ch in blueprint:
+            if ch in z:
+                ADDED_WIRE += 12.5;
+                WIRE_LENGTH += 12.5;
+            else:
+                WIRE_LENGTH += size/2; # Because we're always going to branch to one half or the other
+                size *= RATIO;
     def _configurable_generate_level(self,center, size, blueprint, layer) -> None:
         """Recursive structure for building abritrarily oriented (but legal) 3d htrees
         each layer passes a 1-shorter slice of instructions to the next set of levels.
         """
+        global LAYER_HEIGHT
+
         if blueprint == "":
             return
         
@@ -80,9 +102,10 @@ class HTree3D:
                 sub_side = (x, y, z - half_size)
                 pos_side = (x, y, z + half_size)
             else:
-                sub_side = (x, y, z - 12.5)
-                pos_side = (x, y, z + 12.5)
+                sub_side = (x, y, z - LAYER_HEIGHT)
+                pos_side = (x, y, z + LAYER_HEIGHT)
                 next_size = size
+
 
         ### Let's Make Some Recursive Calls! ###
 
@@ -210,7 +233,7 @@ class HTree3D:
                     points_by_layer[layer] = []
                 points_by_layer[layer].append(point)
             
-            base_size = 16  # Starting size for level 1 junctions
+            base_size = 12  # Starting size for level 1 junctions
             
             # Add special origin junction at (0,0,0) first so it renders with proper depth
             all_x_points.append(0)
@@ -224,7 +247,7 @@ class HTree3D:
                 points = points_by_layer[layer]
                 
                 # Calculate junction size: scale with line width
-                junction_size = base_size * (0.9 ** (layer - 1))  # Same scaling as line width
+                junction_size = base_size * (0.85 ** (layer - 1))  # Same scaling as line width
 
                 
                 # Add to combined arrays
@@ -434,6 +457,7 @@ def main():
         # Compute the size to build off of!
         computed_size = PIXEL_SIZE/(RATIO**len(final_blueprint))
     global X_SIZE
+    print("Computed Size = " + str(computed_size) +"")
     X_SIZE = computed_size;
     global Y_SIZE
     Y_SIZE = computed_size;
@@ -445,7 +469,11 @@ def main():
     print("Opening interactive 3D visualization...")
 
     show_with_dark_background(fig)
-    
+
+    print("Wire length excluding intentional delay: {:.2f}".format(WIRE_LENGTH) + "um")
+    print("Added intentional delay: {:.2f}".format(ADDED_WIRE) + "um")
+    print("Total wire length: {:.2f}".format(ADDED_WIRE + WIRE_LENGTH) + "um")
+        
     save_html = input("\nSave as HTML file? (y/n, default=n): ").strip().lower()
     if save_html in ['y', 'yes']:
         projection_suffix = "_isometric" if isometric else "_perspective"

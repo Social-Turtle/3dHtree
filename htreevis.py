@@ -7,6 +7,14 @@ import tempfile
 import webbrowser
 import os
 
+USE_PIXEL_METRICS = True;
+PIXEL_SIZE = 10;
+LAYER_HEIGHT = 12.5;
+RATIO = 0.7071;
+X_SIZE = 2.5;
+Y_SIZE = 2.5;
+Z_SIZE = 2.5;
+
 class HTree3D:
     """
     A 3D H-tree visualizer using Plotly.
@@ -20,6 +28,7 @@ class HTree3D:
         self.points = []  # Store all points for reference
         self.colors = ['red', 'orange', 'green']  # Color cycle
         self.scale_factor = scale_factor  # Scale factor for H-tree arms
+        self.is_dimensional = USE_PIXEL_METRICS;
 
     def gen_configurable_htree(self, center: Tuple[float, float, float], size: float, blueprint: str) -> None:
         """
@@ -42,6 +51,16 @@ class HTree3D:
         if blueprint == "":
             return
         
+        if self.is_dimensional:
+            next_size = size * RATIO
+        elif len(blueprint) >= 3:
+            if (blueprint[2] == blueprint[0]):
+                next_size = size * 0.7071 
+            else:
+                next_size = size * 0.7937
+        else:
+            next_size = size * self.scale_factor
+
         if len(blueprint) == 1:
             add_nodes = 0
         else:
@@ -57,17 +76,15 @@ class HTree3D:
             sub_side = (x - half_size, y, z)
             pos_side = (x + half_size, y, z)
         elif orientation == '2': ### Z DIRECTION ###
-            sub_side = (x, y, z - half_size)
-            pos_side = (x, y, z + half_size)
+            if not self.is_dimensional:
+                sub_side = (x, y, z - half_size)
+                pos_side = (x, y, z + half_size)
+            else:
+                sub_side = (x, y, z - 12.5)
+                pos_side = (x, y, z + 12.5)
+                next_size = size
 
         ### Let's Make Some Recursive Calls! ###
-        if len(blueprint) >= 3:
-            if blueprint[2] == blueprint[0]:
-                next_size = size * 0.7071 
-            else:
-                next_size = size * 0.7937
-        else:
-            next_size = size * self.scale_factor
 
         self.add_line(sub_side,pos_side, layer, add_nodes)
         self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
@@ -253,7 +270,7 @@ class HTree3D:
             scene=dict(
                 xaxis=dict(
                     title=dict(text='X', font=dict(color='white')), 
-                    range=[-2.5, 2.5],
+                    range=[-X_SIZE, X_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -262,7 +279,7 @@ class HTree3D:
                 ),
                 yaxis=dict(
                     title=dict(text='Y', font=dict(color='white')), 
-                    range=[-2.5, 2.5],
+                    range=[-Y_SIZE, Y_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -271,7 +288,7 @@ class HTree3D:
                 ),
                 zaxis=dict(
                     title=dict(text='Z', font=dict(color='white')), 
-                    range=[-2.5, 2.5],
+                    range=[-Z_SIZE, Z_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -356,9 +373,9 @@ def main():
                 standardized_blueprint = ""
                 for ch in input_blueprint:
                     if ch in set("0xX"):
-                        standardized_blueprint += "0"
-                    elif ch in set("1yY"):
                         standardized_blueprint += "1"
+                    elif ch in set("1yY"):
+                        standardized_blueprint += "0"
                     elif ch in set("2zZ"):
                         standardized_blueprint += "2"
                     else:
@@ -386,33 +403,7 @@ def main():
                     print("Please enter a number between 1 and 21.")
             except ValueError:
                 print("Please enter a valid number.")
-    """    
-    print("\nChoose scale factor:")
-    print("1. 0.7937 (default - cube root of 1/2)")
-    print("2. 0.7071 (sqrt(2)/2)")
-    print("3. Custom value")
     
-    while True:
-        try:
-            scale_choice = input("Enter choice (1-3, default=1): ").strip()
-            if scale_choice == "" or scale_choice == "1":
-                scale_factor = 0.7937
-                break
-            elif scale_choice == "2" or scale_choice == "0":  # Allow "0" as shortcut for 0.7071
-                scale_factor = 0.7071
-                break
-            elif scale_choice == "3":
-                custom_scale = input("Enter custom scale factor (0.1-0.9): ").strip()
-                scale_factor = float(custom_scale)
-                if 0.1 <= scale_factor <= 0.9:
-                    break
-                else:
-                    print("Please enter a value between 0.1 and 0.9.")
-            else:
-                print("Please enter 1, 2, or 3.")
-        except ValueError:
-            print("Please enter a valid number.")
-    """
     scale_factor = 1
     print("\nChoose projection type:")
     print("1. Isometric")
@@ -431,14 +422,25 @@ def main():
             print("Please enter a valid number.")
 
     projection_type = "Isometric" if isometric else "Perspective"
-    print(f"\nGenerating 3D H-tree with {levels} levels, {projection_type.lower()} projection, and scale factor {scale_factor:.4f}...")
+    print(f"\nGenerating 3D H-tree with {levels} levels in {projection_type.lower()} projection.")
     
     if generate_style != "1":
         final_blueprint = ""
         for i in range(levels):
             final_blueprint += str(i % 3)
     
-    fig = visualize_custom_htree(size=2.0, scale_factor=scale_factor, isometric=isometric, blueprint=final_blueprint)
+    computed_size = 2
+    if USE_PIXEL_METRICS:
+        # Compute the size to build off of!
+        computed_size = PIXEL_SIZE/(RATIO**len(final_blueprint))
+    global X_SIZE
+    X_SIZE = computed_size;
+    global Y_SIZE
+    Y_SIZE = computed_size;
+    global Z_SIZE
+    Z_SIZE = computed_size;
+
+    fig = visualize_custom_htree(size=computed_size, scale_factor=scale_factor, isometric=isometric, blueprint=final_blueprint)
 
     print("Opening interactive 3D visualization...")
 

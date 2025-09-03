@@ -9,13 +9,15 @@ import os
 
 USE_PIXEL_METRICS = True;
 PIXEL_SIZE = 10;
-LAYER_HEIGHT = 12.5;
+LAYER_HEIGHT = 5;
 RATIO = 0.7071;
 X_SIZE = 2.5;
 Y_SIZE = 2.5;
 Z_SIZE = 2.5;
 WIRE_LENGTH = 0;
 ADDED_WIRE = 0;
+TOTAL_LENGTH = 0;
+LAST_VERTICAL_LAYER = 0;
 
 class HTree3D:
     """
@@ -53,25 +55,32 @@ class HTree3D:
         global LAYER_HEIGHT;
         global RATIO;
         global ADDED_WIRE;
-
+        global TOTAL_LENGTH;
+        factor = 1;
         x = set('0xX');
         y = set('1yY');
         z = set('2zZ');
         for ch in blueprint:
             if ch in z:
-                ADDED_WIRE += 12.5;
-                WIRE_LENGTH += 12.5;
+                ADDED_WIRE += LAYER_HEIGHT;
+                WIRE_LENGTH += LAYER_HEIGHT;
+                TOTAL_LENGTH += LAYER_HEIGHT * 2 * factor;
             else:
                 WIRE_LENGTH += size/2; # Because we're always going to branch to one half or the other
                 size *= RATIO;
+                TOTAL_LENGTH += size * factor
+            factor *= 2;
+
+
     def _configurable_generate_level(self,center, size, blueprint, layer) -> None:
         """Recursive structure for building abritrarily oriented (but legal) 3d htrees
         each layer passes a 1-shorter slice of instructions to the next set of levels.
         """
         global LAYER_HEIGHT
-
+        global LAST_VERTICAL_LAYER
         if blueprint == "":
             return
+        
         
         if self.is_dimensional:
             next_size = size * RATIO
@@ -89,6 +98,7 @@ class HTree3D:
             add_nodes = layer + 1
         x, y, z = center
         half_size = size * 0.5
+        
         orientation = blueprint[0]
         if orientation == '0': ### X DIRECTION ###
             sub_side = (x, y-half_size, z)
@@ -102,10 +112,15 @@ class HTree3D:
                 sub_side = (x, y, z - half_size)
                 pos_side = (x, y, z + half_size)
             else:
-                sub_side = (x, y, z - LAYER_HEIGHT)
-                pos_side = (x, y, z + LAYER_HEIGHT)
-                next_size = size
-
+                if layer == LAST_VERTICAL_LAYER:
+                    #print("Amending height for layer: " + str(layer))
+                    sub_side = (x, y, z - LAYER_HEIGHT)
+                    pos_side = (x, y, z)
+                    next_size = size
+                else:
+                    sub_side = (x, y, z - LAYER_HEIGHT*(2**(blueprint.count("2")-2)))
+                    pos_side = (x, y, z + LAYER_HEIGHT*(2**(blueprint.count("2")-2)))
+                    next_size = size
 
         ### Let's Make Some Recursive Calls! ###
 
@@ -342,6 +357,10 @@ class HTree3D:
 
 def visualize_custom_htree(size: float = 2.0, scale_factor: float = 0.7937, isometric: bool = False, blueprint: str = "") -> go.Figure:
     htree = HTree3D(scale_factor=scale_factor)
+    global LAST_VERTICAL_LAYER
+    for i in range(len(blueprint)):
+        if blueprint[i] == "2":
+            LAST_VERTICAL_LAYER = i;
     htree.gen_configurable_htree((0,0,0), size, blueprint)  # Don't assign the return value
 
     projection_type = "Isometric" if isometric else "Perspective"
@@ -473,6 +492,7 @@ def main():
     print("Wire length excluding intentional delay: {:.2f}".format(WIRE_LENGTH) + "um")
     print("Added intentional delay: {:.2f}".format(ADDED_WIRE) + "um")
     print("Total wire length: {:.2f}".format(ADDED_WIRE + WIRE_LENGTH) + "um")
+    print("Average segment length: " + str(TOTAL_LENGTH/(2**(len(final_blueprint)+1) - 2)) + "um")
         
     save_html = input("\nSave as HTML file? (y/n, default=n): ").strip().lower()
     if save_html in ['y', 'yes']:

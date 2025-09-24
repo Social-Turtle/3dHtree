@@ -1,15 +1,19 @@
-import numpy as np
+
 import plotly.graph_objects as go
-import plotly.express as px
-from typing import List, Tuple
-import math
+from typing import Tuple
 import tempfile
 import webbrowser
-import os
+
+# TODO:
+#   Create reasonable labels for each memory module, and each node (seperate kinds of labels)
+#   Add functionality to compute distance from any module to any other module. (A node->node model might be helpful, but we may also be able to do some shortcuts from most recent ancestor, etc.)
+#   Add capacity to create 3D Meshes. (and 2D ones)
+#   Made memory modules their own class with their own storage, so that we can inlay our graph data from the DEV half.
+
 
 USE_PIXEL_METRICS = True;
 PIXEL_SIZE = 10;
-LAYER_HEIGHT = 5;
+LAYER_HEIGHT = 25;
 RATIO = 0.7071;
 X_SIZE = 2.5;
 Y_SIZE = 2.5;
@@ -70,7 +74,6 @@ class HTree3D:
                 size *= RATIO;
                 TOTAL_LENGTH += size * factor
             factor *= 2;
-
 
     def _configurable_generate_level(self,center, size, blueprint, layer) -> None:
         """Recursive structure for building abritrarily oriented (but legal) 3d htrees

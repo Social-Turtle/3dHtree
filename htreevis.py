@@ -11,80 +11,326 @@ import webbrowser
 #   Made memory modules their own class with their own storage, so that we can inlay our graph data from the DEV half.
 
 
-USE_PIXEL_METRICS = True;
-PIXEL_SIZE = 10;
+PE_SIZE = 10; #Side length of a PE
 LAYER_HEIGHT = 25;
-RATIO = 0.7071;
+GUTTER_WIDTH = 1;
+# Set dimensions on the viewer window.
 X_SIZE = 2.5;
 Y_SIZE = 2.5;
 Z_SIZE = 2.5;
-WIRE_LENGTH = 0;
-ADDED_WIRE = 0;
-TOTAL_LENGTH = 0;
-LAST_VERTICAL_LAYER = 0;
+
+class DataGraph():
+    """
+    An object to intake and handle Dev's data network
+    """
+
+class MemoryElement:
+    """
+    An object that represents our PEs. Can be generated with a name at 
+    some location, taking up some space, and is capable of storing a 
+    configurable amount of memory.
+
+    All MemoryElement objects should be stored in a common list, 
+    allowing for simple access and computation of totals.
+    """
+    def __init__(self, cell_num, energy_per_cell, cell_area, element_index):
+        self.cell_num = cell_num
+        self.energy_per_cell = energy_per_cell
+        self.cell_area = cell_area
+        self.element_index = element_index
+        self.search_length = (cell_num ** 0.5) * (cell_area ** 0.5) # the average length we expect to travel searching for a document in our memory
+        self.search_energy = self.search_length * energy_per_cell  # the energy consumed in finding that document
+
+    def print_memory():
+        return
+    
+    def find_next(query):
+        return
+    
+class Mesh3D:
+    """
+    A 3D Mesh Generator.
+    """
+    def __init__(self):
+        self.lines = []
+        self.nodes = []
+        self.memories = []
+
+    def find_corner(self, blueprint):
+        print(blueprint)
+        print(type(blueprint))
+        corner_x = -(blueprint[0] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[0] - 1))
+        corner_y = -(blueprint[1] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[1] - 1))
+        corner_z = -(blueprint[2] * LAYER_HEIGHT/2)
+        return (corner_x, corner_y, corner_z)
+
+    def gen_noc_layout(self, blueprint):
+        """
+        Create a Mesh network according to the blueprint (X,Y,Z tuple)
+        """
+        start_corner = self.find_corner(blueprint)
+        for layer in range(blueprint[2]):
+            for y_mem in range(blueprint[1]):
+                for x_mem in range (blueprint[0]):
+                    """Let's make some memory nodes!"""
+
+        return
+
+    def find_distance(self):
+        return
+    
+    def compute_energy(self):
+        return
+    
+    def create_plotly_figure(self, title: str = "3D H-Tree Visualization", 
+                           isometric: bool = False) -> go.Figure:
+        """
+        Create a Plotly 3D figure from the generated H-tree.
+        
+        Returns:
+            Plotly Figure object with interactive 3D visualization
+        """
+        if not self.lines:
+            raise ValueError("No H-tree generated. Call generate_htree() first.")
+        
+        # Create the 3D line plot
+        fig = go.Figure()
+        
+        # Group lines by orientation for color coding
+        # Red for X-direction, Orange for Y-direction, Green for Z-direction
+        orientation_colors = {
+            'x': 'red',
+            'y': 'orange', 
+            'z': 'green'
+        }
+        
+        # Group lines by both orientation and layer for individual control
+        lines_by_orientation_and_layer = {}
+        
+        for line in self.lines:
+            x1, y1, z1, x2, y2, z2, layer = line
+            
+            # Determine orientation by checking which coordinate varies
+            if abs(x1 - x2) > 1e-10:  # Line varies in X dimension
+                orientation = 'x'
+            elif abs(y1 - y2) > 1e-10:  # Line varies in Y dimension
+                orientation = 'y'
+            elif abs(z1 - z2) > 1e-10:  # Line varies in Z dimension
+                orientation = 'z'
+            else:
+                continue  # Skip degenerate lines (shouldn't happen)
+            
+            key = (orientation, layer)
+            if key not in lines_by_orientation_and_layer:
+                lines_by_orientation_and_layer[key] = []
+            lines_by_orientation_and_layer[key].append((x1, y1, z1, x2, y2, z2))
+        
+        # Add traces for each orientation/layer combination
+        orientation_names = {'x': 'X', 'y': 'Y', 'z': 'Z'}
+        
+        # Sort by layer first, then by orientation to preserve layer order
+        for (orientation, layer), lines in sorted(lines_by_orientation_and_layer.items(), key=lambda x: (x[0][1], x[0][0])):
+            x_lines, y_lines, z_lines = [], [], []
+            
+            for line_data in lines:
+                x1, y1, z1, x2, y2, z2 = line_data
+                x_lines.extend([x1, x2, None])  # None creates breaks between lines
+                y_lines.extend([y1, y2, None])
+                z_lines.extend([z1, z2, None])
+            
+            # Use consistent line width for all orientations
+            base_width = 12
+            color = orientation_colors[orientation]
+            
+            fig.add_trace(go.Scatter3d(
+                x=x_lines,
+                y=y_lines,
+                z=z_lines,
+                mode='lines',
+                line=dict(
+                    color=color,
+                    width=max(base_width*(0.75**(layer-1)),1)
+                ),
+                name=f'Layer {layer} ({orientation_names[orientation]})',
+                hoverinfo='skip'
+            ))
+        
+        all_points = list(set(self.points))
+        if all_points:
+            # Collect all junction points and their sizes/colors for a single trace
+            all_x_points = []
+            all_y_points = []
+            all_z_points = []
+            all_sizes = []
+            all_colors = []
+            
+            # Create a mapping from junction points to the orientation of the line they sit at the center of
+            junction_center_orientations = {}
+            for line in self.lines:
+                x1, y1, z1, x2, y2, z2, layer = line
+                
+                # Determine line orientation
+                if abs(x1 - x2) > 1e-10:
+                    orientation = 'x'
+                elif abs(y1 - y2) > 1e-10:
+                    orientation = 'y'
+                elif abs(z1 - z2) > 1e-10:
+                    orientation = 'z'
+                else:
+                    continue
+                
+                # Calculate the midpoint of this line
+                midpoint = ((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
+                midpoint_key = (round(midpoint[0], 10), round(midpoint[1], 10), round(midpoint[2], 10))
+                
+                # Map this midpoint to the orientation of the line it's the center of
+                junction_center_orientations[midpoint_key] = orientation
+            
+            # Group points by layer and calculate sizes
+            points_by_layer = {}
+            for point_data in all_points:
+                point, layer = point_data
+                if layer not in points_by_layer:
+                    points_by_layer[layer] = []
+                points_by_layer[layer].append(point)
+            
+            base_size = 12  # Starting size for level 1 junctions
+            
+            # Add special origin junction at (0,0,0) first so it renders with proper depth
+            all_x_points.append(0)
+            all_y_points.append(0)
+            all_z_points.append(0)
+            all_sizes.append(base_size)
+            all_colors.append('white')
+            
+            # Collect all points into single arrays for one trace
+            for layer in sorted(points_by_layer.keys()):
+                points = points_by_layer[layer]
+                
+                # Calculate junction size: scale with line width
+                junction_size = base_size * (0.85 ** (layer - 1))  # Same scaling as line width
+
+                
+                # Add to combined arrays
+                for point in points:
+                    point_key = (round(point[0], 10), round(point[1], 10), round(point[2], 10))
+                    
+                    # Determine junction color based on the line it sits at the center of
+                    if point_key in junction_center_orientations:
+                        orientation = junction_center_orientations[point_key]
+                        color = orientation_colors[orientation]
+                    else:
+                        color = 'white'  # Fallback for points not at center of any line
+                                                
+                    all_x_points.append(point[0])
+                    all_y_points.append(point[1])
+                    all_z_points.append(point[2])
+                    all_sizes.append(junction_size)
+                    all_colors.append(color)
+            
+            # Add all junctions (including origin) as a single trace
+            fig.add_trace(go.Scatter3d(
+                x=all_x_points,
+                y=all_y_points,
+                z=all_z_points,
+                mode='markers',
+                marker=dict(
+                    size=all_sizes,
+                    color=all_colors,
+                    opacity=0.8,
+                    line=dict(width=0)  # Remove white outline
+                ),
+                name='Junctions',
+                hoverinfo='x+y+z'
+            ))
+        
+        # Update layout for better visualization
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,
+                font=dict(size=16, color='white')
+            ),
+            scene=dict(
+                xaxis=dict(
+                    title=dict(text='X', font=dict(color='white')), 
+                    range=[-X_SIZE, X_SIZE],
+                    backgroundcolor='rgb(40, 40, 40)',
+                    gridcolor='rgb(120, 120, 120)',
+                    showbackground=True,
+                    zerolinecolor='rgb(120, 120, 120)',
+                    tickfont=dict(color='white')
+                ),
+                yaxis=dict(
+                    title=dict(text='Y', font=dict(color='white')), 
+                    range=[-Y_SIZE, Y_SIZE],
+                    backgroundcolor='rgb(40, 40, 40)',
+                    gridcolor='rgb(120, 120, 120)',
+                    showbackground=True,
+                    zerolinecolor='rgb(120, 120, 120)',
+                    tickfont=dict(color='white')
+                ),
+                zaxis=dict(
+                    title=dict(text='Z', font=dict(color='white')), 
+                    range=[-Z_SIZE, Z_SIZE],
+                    backgroundcolor='rgb(40, 40, 40)',
+                    gridcolor='rgb(120, 120, 120)',
+                    showbackground=True,
+                    zerolinecolor='rgb(120, 120, 120)',
+                    tickfont=dict(color='white')
+                ),
+                camera=dict(
+                    projection=dict(type="orthographic" if isometric else "perspective"),
+                    eye=dict(x=1.5, y=1.5, z=1.5)
+                ),
+                aspectmode='cube'  # Keeps proportions correct
+            ),
+            paper_bgcolor='black',  # Overall background
+            plot_bgcolor='black',   # Plot area background
+            font=dict(color='white'),  # All text white
+            width=1200,
+            height=900,
+            showlegend=True,
+            legend=dict(
+                font=dict(color='white'),
+                bgcolor='rgba(0, 0, 0, 0.5)',  # Semi-transparent legend background
+                bordercolor='rgb(120, 120, 120)',
+                borderwidth=1
+            )
+        )
+        
+        return fig
 
 class HTree3D:
     """
-    A 3D H-tree visualizer using Plotly.
-    
-    An H-tree is a fractal tree structure where each node has an H-shape,
-    and each branch recursively contains smaller H-shapes.
+    A 3D H-tree generator.
     """
     
-    def __init__(self, scale_factor: float = 0.7937):
+    def __init__(self):
         self.lines = []  # Store all line segments as (x1,y1,z1, x2,y2,z2, layer)
         self.points = []  # Store all points for reference
         self.colors = ['red', 'orange', 'green']  # Color cycle
-        self.scale_factor = scale_factor  # Scale factor for H-tree arms
-        self.is_dimensional = USE_PIXEL_METRICS;
+        self.nodes = []
+        self.memories = []
 
-    def gen_configurable_htree(self, center: Tuple[float, float, float], size: float, blueprint: str) -> None:
-        """
-        Generate a configurable H-tree based on a blueprint string.
-        """
-        # Parse the blueprint string
-        levels = len(blueprint)
 
-        if levels <= 0:
+    def gen_noc_layout(self, blueprint: str) -> None:
+        """
+        Generate H-tree based on a blueprint string.
+        """
+        if len(blueprint) <= 0:
             return
-        
-        self._compute_path_length(size, blueprint)
+        self._configurable_generate_level((0,0,0), blueprint, 0)
 
-        self._configurable_generate_level(center, size, blueprint, 0)
-        
-        # Now that we know the input is valid, let's build something cool.
-
-    def _compute_path_length(self, size: float = 2.0, blueprint: str = ""):
-        global WIRE_LENGTH;
-        global LAYER_HEIGHT;
-        global RATIO;
-        global ADDED_WIRE;
-        global TOTAL_LENGTH;
-        factor = 1;
-        x = set('0xX');
-        y = set('1yY');
-        z = set('2zZ');
-        for ch in blueprint:
-            if ch in z:
-                ADDED_WIRE += LAYER_HEIGHT;
-                WIRE_LENGTH += LAYER_HEIGHT;
-                TOTAL_LENGTH += LAYER_HEIGHT * 2 * factor;
-            else:
-                WIRE_LENGTH += size/2; # Because we're always going to branch to one half or the other
-                size *= RATIO;
-                TOTAL_LENGTH += size * factor
-            factor *= 2;
-
-    def _configurable_generate_level(self,center, size, blueprint, layer) -> None:
+    def _configurable_generate_level(self,center, blueprint, layer) -> None:
         """Recursive structure for building abritrarily oriented (but legal) 3d htrees
         each layer passes a 1-shorter slice of instructions to the next set of levels.
         """
         global LAYER_HEIGHT
-        global LAST_VERTICAL_LAYER
         if blueprint == "":
             return
         
-        
+        """
         if self.is_dimensional:
             next_size = size * RATIO
         elif len(blueprint) >= 3:
@@ -130,7 +376,8 @@ class HTree3D:
         self.add_line(sub_side,pos_side, layer, add_nodes)
         self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
         self._configurable_generate_level(pos_side, next_size, blueprint[1:], layer+1)
-
+        """
+        return
     def add_line(self, point1: Tuple[float, float, float], 
                  point2: Tuple[float, float, float], layer: int, max_layers: int) -> None:
         """Add a line segment to the tree."""
@@ -358,22 +605,23 @@ class HTree3D:
         
         return fig
 
-def visualize_custom_htree(size: float = 2.0, scale_factor: float = 0.7937, isometric: bool = False, blueprint: str = "") -> go.Figure:
-    htree = HTree3D(scale_factor=scale_factor)
-    global LAST_VERTICAL_LAYER
-    for i in range(len(blueprint)):
-        if blueprint[i] == "2":
-            LAST_VERTICAL_LAYER = i;
-    htree.gen_configurable_htree((0,0,0), size, blueprint)  # Don't assign the return value
+def create_viz(blueprint, network_type: bool, isometric: bool = False) -> go.Figure:
+    if network_type == 1:
+        noc = HTree3D()
+    else:
+        noc = Mesh3D()
+    noc.gen_noc_layout(blueprint)        
 
     projection_type = "Isometric" if isometric else "Perspective"
-    title = f"3D H-Tree with {len(blueprint)} levels ({projection_type}, scale: {scale_factor:.4f})"
-    return htree.create_plotly_figure(title, isometric)
+    if network_type == 1:
+        title = f"3D H-Tree with {len(blueprint)} levels ({projection_type})"
+    else:
+        title = f"3D Mesh with size {len(blueprint)}"
+
+    return noc.create_plotly_figure(title, isometric)
 
 def show_with_dark_background(fig: go.Figure):
     html_content = fig.to_html(include_plotlyjs='cdn')
-    
-    # Inject dark background CSS
     dark_css = """
     <style>
         body { 
@@ -399,14 +647,19 @@ def show_with_dark_background(fig: go.Figure):
     # Open the dark-themed version in browser
     webbrowser.open(f'file://{temp_path}')
 
-def main():
+def choose_network_type():
+    """
+    Gets network type choice from the user. Returns 0 for mesh, 1 for htree.
+    """
+    while True:
+        network_type = input("Select your network type (1 = Htree, 0 = Mesh): ").strip()
+        if int(network_type) == 0 or int(network_type) == 1:
+            return int(network_type)
+        else:
+            print("Input invalid. Please try again.")
 
-    print("3D H-Tree Visualizer")
-    print("===================")
-
-    generate_style = input("Select your tree generation type (1 = configurable, 0 = cubioid, default = 0) ").strip()
-    
-    if generate_style == "1":
+def create_blueprint(mode):
+    if int(mode) == 1:
         print("\nDefine your Htree as a no-space string, starting from the core dimension.")
         print("0,x,X = x-dimension")
         print("1,y,Y = y-dimension")
@@ -414,7 +667,6 @@ def main():
         while True:
             try:
                 input_blueprint = input("Enter htree as a no-space string: ").strip()
-                levels = len(input_blueprint)
                 standardized_blueprint = ""
                 for ch in input_blueprint:
                     if ch in set("0xX"):
@@ -432,75 +684,49 @@ def main():
                 break
             except ValueError as e:
                 print(e)
-        final_blueprint = standardized_blueprint
-    else:
+        return standardized_blueprint
+    else: # generate a mesh network
         while True:
-            try:
-                levels = input("Enter number of levels (1-21, default=6): ").strip()
-                if levels == "":
-                    levels = 6
-                else:
-                    levels = int(levels)
-                
-                if 1 <= levels <= 21:
-                    break
-                else:
-                    print("Please enter a number between 1 and 21.")
-            except ValueError:
-                print("Please enter a valid number.")
-    
-    scale_factor = 1
+            mesh_X = input("Enter X dimension of the mesh: ").strip()
+            mesh_Y = input("Enter Y dimension of the mesh: ").strip()
+            mesh_Z = input("Enter Z dimension of the mesh: ").strip()
+            if mesh_X.isdigit() and mesh_Y.isdigit() and mesh_Z.isdigit():
+                break
+            else:
+                print("At least one of the input values consisted of a non-digit character. Please enter again.")
+        print("Constructing mesh with dimensions X,Y,Z of: (" + str(mesh_X) + ", " + str(mesh_Y) + ", " + str(mesh_Z) + ")")
+        return (int(mesh_X),int(mesh_Y),int(mesh_Z))
+
+def choose_projection():
     print("\nChoose projection type:")
     print("1. Isometric")
     print("2. Perspective")
-    
     while True:
         try:
             projection_choice = input("Enter choice (1-2, default=1): ").strip()
             if projection_choice == "2":
-                isometric = False
-                break
+                return False
             else:
-                isometric = True
-                break
+                return True
         except ValueError:
             print("Please enter a valid number.")
 
+def main():
+    print("3D Memory Network Simulation Environment")
+    print("========================================")
+    network_type = choose_network_type()
+    final_blueprint = create_blueprint(network_type) #  WARNING: -- output is a string for htree and a tuple for mesh --
+    isometric = choose_projection()
     projection_type = "Isometric" if isometric else "Perspective"
-    print(f"\nGenerating 3D H-tree with {levels} levels in {projection_type.lower()} projection.")
+    print(f"\nGenerating NOC in {projection_type.lower()} projection.")
     
-    if generate_style != "1":
-        final_blueprint = ""
-        for i in range(levels):
-            final_blueprint += str(i % 3)
-    
-    computed_size = 2
-    if USE_PIXEL_METRICS:
-        # Compute the size to build off of!
-        computed_size = PIXEL_SIZE/(RATIO**len(final_blueprint))
-    global X_SIZE
-    print("Computed Size = " + str(computed_size) +"")
-    X_SIZE = computed_size;
-    global Y_SIZE
-    Y_SIZE = computed_size;
-    global Z_SIZE
-    Z_SIZE = computed_size;
-
-    fig = visualize_custom_htree(size=computed_size, scale_factor=scale_factor, isometric=isometric, blueprint=final_blueprint)
-
-    print("Opening interactive 3D visualization...")
-
+    fig = create_viz(final_blueprint, network_type)
     show_with_dark_background(fig)
 
-    print("Wire length excluding intentional delay: {:.2f}".format(WIRE_LENGTH) + "um")
-    print("Added intentional delay: {:.2f}".format(ADDED_WIRE) + "um")
-    print("Total wire length: {:.2f}".format(ADDED_WIRE + WIRE_LENGTH) + "um")
-    print("Average segment length: " + str(TOTAL_LENGTH/(2**(len(final_blueprint)+1) - 2)) + "um")
-        
     save_html = input("\nSave as HTML file? (y/n, default=n): ").strip().lower()
     if save_html in ['y', 'yes']:
         projection_suffix = "_isometric" if isometric else "_perspective"
-        filename = f"htree_3d_{levels}_levels{projection_suffix}.html"
+        filename = f"htree_3d_{len(final_blueprint)}_levels{projection_suffix}.html"
         fig.write_html(filename)
         print(f"Saved as {filename}")
 

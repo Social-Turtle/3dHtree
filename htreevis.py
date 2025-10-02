@@ -33,13 +33,15 @@ class MemoryElement:
     All MemoryElement objects should be stored in a common list, 
     allowing for simple access and computation of totals.
     """
-    def __init__(self, cell_num, energy_per_cell, cell_area, element_index):
-        self.cell_num = cell_num
+    def __init__(self, element_index, is_mesh, position, energy_per_cell = 1, cell_area = 10, memory_size = 128):
+        self.memory_size = memory_size
         self.energy_per_cell = energy_per_cell
         self.cell_area = cell_area
-        self.element_index = element_index
-        self.search_length = (cell_num ** 0.5) * (cell_area ** 0.5) # the average length we expect to travel searching for a document in our memory
+        self.name = element_index
+        self.search_length = (self.memory_size ** 0.5) * (cell_area ** 0.5) # the average length we expect to travel searching for a document in our memory
         self.search_energy = self.search_length * energy_per_cell  # the energy consumed in finding that document
+        self.is_mesh = is_mesh
+        self.position = position
 
     def print_memory():
         return
@@ -67,11 +69,16 @@ class Mesh3D:
         Create a Mesh network according to the blueprint (X,Y,Z tuple)
         """
         start_corner = self.find_corner(blueprint)
+        memory_nodes = []
         for layer in range(blueprint[2]):
             for y_mem in range(blueprint[1]):
                 for x_mem in range (blueprint[0]):
-                    """Let's make some memory nodes!"""
-
+                    position = (start_corner[0]+PE_SIZE*x_mem, start_corner[1]+PE_SIZE*y_mem, start_corner[2]+layer*LAYER_HEIGHT)
+                    name = layer*blueprint[1]+y_mem*blueprint[0]+x_mem
+                    memory_nodes.append(MemoryElement(name, True, position)) # Create memory nodes with a distinct name. TEMP naming system.
+        for i in range(len(memory_nodes)):
+            print(str(memory_nodes[i].name) + " - Has position:" + str(memory_nodes[i].position))
+        print("Expected node count: " + str(blueprint[0]*blueprint[1]*blueprint[2]))
         return
 
     def find_distance(self):
@@ -610,8 +617,6 @@ def create_viz(blueprint, network_type: bool, isometric: bool = False) -> go.Fig
         noc = Mesh3D()
     noc.gen_noc_layout(blueprint)        
 
-    print(blueprint)
-    return
     projection_type = "Isometric" if isometric else "Perspective"
     if network_type == 1:
         title = f"3D H-Tree with {len(blueprint)} levels ({projection_type})"

@@ -70,14 +70,18 @@ class Mesh3D:
         """
         start_corner = self.find_corner(blueprint)
         memory_nodes = []
+        print("blueprint 2: " + str(blueprint[2]))
+        print("blueprint 2: " + str(blueprint[1]))
+        print("blueprint 2: " + str(blueprint[0]))
         for layer in range(blueprint[2]):
             for y_mem in range(blueprint[1]):
                 for x_mem in range (blueprint[0]):
                     position = (start_corner[0]+PE_SIZE*x_mem, start_corner[1]+PE_SIZE*y_mem, start_corner[2]+layer*LAYER_HEIGHT)
-                    name = layer*blueprint[1]+y_mem*blueprint[0]+x_mem
+                    name = layer*blueprint[1]*blueprint[0]+y_mem*blueprint[0]+x_mem
                     memory_nodes.append(MemoryElement(name, True, position)) # Create memory nodes with a distinct name. TEMP naming system.
         for i in range(len(memory_nodes)):
             print(str(memory_nodes[i].name) + " - Has position:" + str(memory_nodes[i].position))
+        print("Total node count: " + str(len(memory_nodes)))
         print("Expected node count: " + str(blueprint[0]*blueprint[1]*blueprint[2]))
         return
 

@@ -57,8 +57,6 @@ class Mesh3D:
         self.memories = []
 
     def find_corner(self, blueprint):
-        print(blueprint)
-        print(type(blueprint))
         corner_x = -(blueprint[0] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[0] - 1))
         corner_y = -(blueprint[1] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[1] - 1))
         corner_z = -(blueprint[2] * LAYER_HEIGHT/2)
@@ -612,6 +610,8 @@ def create_viz(blueprint, network_type: bool, isometric: bool = False) -> go.Fig
         noc = Mesh3D()
     noc.gen_noc_layout(blueprint)        
 
+    print(blueprint)
+    return
     projection_type = "Isometric" if isometric else "Perspective"
     if network_type == 1:
         title = f"3D H-Tree with {len(blueprint)} levels ({projection_type})"
@@ -690,10 +690,10 @@ def create_blueprint(mode):
             mesh_X = input("Enter X dimension of the mesh: ").strip()
             mesh_Y = input("Enter Y dimension of the mesh: ").strip()
             mesh_Z = input("Enter Z dimension of the mesh: ").strip()
-            if mesh_X.isdigit() and mesh_Y.isdigit() and mesh_Z.isdigit():
+            if mesh_X.isdigit() and mesh_Y.isdigit() and mesh_Z.isdigit() and mesh_X != "0" and mesh_Y != "0" and mesh_Z != "0" :
                 break
             else:
-                print("At least one of the input values consisted of a non-digit character. Please enter again.")
+                print("Only nonzero integer inputs accepted.")
         print("Constructing mesh with dimensions X,Y,Z of: (" + str(mesh_X) + ", " + str(mesh_Y) + ", " + str(mesh_Z) + ")")
         return (int(mesh_X),int(mesh_Y),int(mesh_Z))
 

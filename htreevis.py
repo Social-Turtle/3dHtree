@@ -56,7 +56,7 @@ class Mesh3D:
     def __init__(self):
         self.lines = []
         self.nodes = []
-        self.memories = []
+        self.memory_nodes = []
 
     def find_corner(self, blueprint):
         corner_x = -(blueprint[0] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[0] - 1))
@@ -69,43 +69,62 @@ class Mesh3D:
         Create a Mesh network according to the blueprint (X,Y,Z tuple)
         """
         start_corner = self.find_corner(blueprint)
-        memory_nodes = []
         print("blueprint 2: " + str(blueprint[2]))
         print("blueprint 2: " + str(blueprint[1]))
         print("blueprint 2: " + str(blueprint[0]))
         for layer in range(blueprint[2]):
             for y_mem in range(blueprint[1]):
                 for x_mem in range (blueprint[0]):
-                    position = (start_corner[0]+PE_SIZE*x_mem, start_corner[1]+PE_SIZE*y_mem, start_corner[2]+layer*LAYER_HEIGHT)
+                    position = (start_corner[0]+(PE_SIZE+GUTTER_WIDTH)*x_mem, start_corner[1]+(PE_SIZE+GUTTER_WIDTH)*y_mem, start_corner[2]+layer*LAYER_HEIGHT)
                     name = layer*blueprint[1]*blueprint[0]+y_mem*blueprint[0]+x_mem
-                    memory_nodes.append(MemoryElement(name, True, position)) # Create memory nodes with a distinct name. TEMP naming system.
-        for i in range(len(memory_nodes)):
-            print(str(memory_nodes[i].name) + " - Has position:" + str(memory_nodes[i].position))
-        print("Total node count: " + str(len(memory_nodes)))
-        print("Expected node count: " + str(blueprint[0]*blueprint[1]*blueprint[2]))
+                    self.memory_nodes.append(MemoryElement(name, True, position)) # Create memory nodes with a distinct name. TEMP naming system.
+                    if layer != blueprint[2]:
+                        self.lines.append((position[0], position[1], position[2], position[0], position[1], position[2] + LAYER_HEIGHT))
+                    if layer != 0:
+                        self.lines.append((position[0], position[1], position[2], position[0], position[1], position[2] - LAYER_HEIGHT))
+                    if y_mem != blueprint[1]:
+                        self.lines.append((position[0], position[1], position[2], position[0], position[1] + (PE_SIZE+GUTTER_WIDTH), position[2]))
+                    if y_mem != 0:
+                        self.lines.append((position[0], position[1], position[2], position[0], position[1] - (PE_SIZE+GUTTER_WIDTH), position[2]))
+                    if x_mem != blueprint[0]:
+                        self.lines.append((position[0], position[1], position[2], position[0] + (PE_SIZE+GUTTER_WIDTH), position[1], position[2]))
+                    if x_mem != 0:
+                        self.lines.append((position[0], position[1], position[2], position[0] - (PE_SIZE+GUTTER_WIDTH), position[1], position[2]))
+        #print("Expected node count: " + str(blueprint[0]*blueprint[1]*blueprint[2]))
         return
 
-    def find_distance(self):
+    def find_distance(self, node_b, node_a):
+        """
+        Computes the distances along the shortest wire path between nodes.
+        Returns distance in an (x+y,z) tuple, to allow for after-the-fact vertical cost changes.
+        """
+        dist_h = abs(node_b.position[0] - node_a.position[0]) + abs(node_b.position[1] + node_a.position[1])
+        dist_v = abs(node_b.position[2] - node_a.position[2])
+        return (dist_h, dist_v)
+    
+    def compute_energy(self, node_a, node_b):
+        """
+        Takes two arbitrary memories, computes the power consumption to send a bit between them.        
+        """
+        dists = self.find_distance(self, node_a, node_b)
+        
+        ### TODO: Fill in whatever logic/model we base our energy consumption on... Do we actually care about values, or just linear/quadratic scaling?
         return
     
-    def compute_energy(self):
-        return
-    
-    def create_plotly_figure(self, title: str = "3D H-Tree Visualization", 
+    def create_plotly_figure(self, title: str = "3D Mesh Visualization", 
                            isometric: bool = False) -> go.Figure:
         """
-        Create a Plotly 3D figure from the generated H-tree.
+        Create a Plotly 3D figure from the generated Mesh.
         
         Returns:
             Plotly Figure object with interactive 3D visualization
         """
         if not self.lines:
-            raise ValueError("No H-tree generated. Call generate_htree() first.")
+            raise ValueError("No Mesh generated. Call gen_noc_layout() first.")
         
         # Create the 3D line plot
         fig = go.Figure()
         
-        # Group lines by orientation for color coding
         # Red for X-direction, Orange for Y-direction, Green for Z-direction
         orientation_colors = {
             'x': 'red',
@@ -117,7 +136,7 @@ class Mesh3D:
         lines_by_orientation_and_layer = {}
         
         for line in self.lines:
-            x1, y1, z1, x2, y2, z2, layer = line
+            x1, y1, z1, x2, y2, z2,= line
             
             # Determine orientation by checking which coordinate varies
             if abs(x1 - x2) > 1e-10:  # Line varies in X dimension
@@ -126,21 +145,15 @@ class Mesh3D:
                 orientation = 'y'
             elif abs(z1 - z2) > 1e-10:  # Line varies in Z dimension
                 orientation = 'z'
-            else:
-                continue  # Skip degenerate lines (shouldn't happen)
-            
-            key = (orientation, layer)
+            ### TODO: FROM HERE DOWN, DISENTAGLE MEMORIES AND NODES.
+            key = (orientation)
             if key not in lines_by_orientation_and_layer:
                 lines_by_orientation_and_layer[key] = []
             lines_by_orientation_and_layer[key].append((x1, y1, z1, x2, y2, z2))
         
-        # Add traces for each orientation/layer combination
         orientation_names = {'x': 'X', 'y': 'Y', 'z': 'Z'}
-        
-        # Sort by layer first, then by orientation to preserve layer order
         for (orientation, layer), lines in sorted(lines_by_orientation_and_layer.items(), key=lambda x: (x[0][1], x[0][0])):
-            x_lines, y_lines, z_lines = [], [], []
-            
+            x_lines, y_lines, z_lines = [], [], []            
             for line_data in lines:
                 x1, y1, z1, x2, y2, z2 = line_data
                 x_lines.extend([x1, x2, None])  # None creates breaks between lines

@@ -15,9 +15,9 @@ PE_SIZE = 10; #Side length of a PE
 LAYER_HEIGHT = 25;
 GUTTER_WIDTH = 1;
 # Set dimensions on the viewer window.
-X_SIZE = 2.5;
-Y_SIZE = 2.5;
-Z_SIZE = 2.5;
+X_SIZE = 250;
+Y_SIZE = 250;
+Z_SIZE = 250;
 
 class DataGraph():
     """
@@ -59,9 +59,15 @@ class Mesh3D:
         self.memory_nodes = []
 
     def find_corner(self, blueprint):
+        global X_SIZE
+        global Y_SIZE
+        global Z_SIZE
         corner_x = -(blueprint[0] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[0] - 1))
         corner_y = -(blueprint[1] * PE_SIZE/2 + (GUTTER_WIDTH/2 * blueprint[1] - 1))
         corner_z = -(blueprint[2] * LAYER_HEIGHT/2)
+        X_SIZE = abs(corner_x)
+        Y_SIZE = abs(corner_y)
+        Z_SIZE = abs(corner_z)
         return (corner_x, corner_y, corner_z)
 
     def gen_noc_layout(self, blueprint):
@@ -69,28 +75,18 @@ class Mesh3D:
         Create a Mesh network according to the blueprint (X,Y,Z tuple)
         """
         start_corner = self.find_corner(blueprint)
-        print("blueprint 2: " + str(blueprint[2]))
-        print("blueprint 2: " + str(blueprint[1]))
-        print("blueprint 2: " + str(blueprint[0]))
         for layer in range(blueprint[2]):
             for y_mem in range(blueprint[1]):
                 for x_mem in range (blueprint[0]):
                     position = (start_corner[0]+(PE_SIZE+GUTTER_WIDTH)*x_mem, start_corner[1]+(PE_SIZE+GUTTER_WIDTH)*y_mem, start_corner[2]+layer*LAYER_HEIGHT)
                     name = layer*blueprint[1]*blueprint[0]+y_mem*blueprint[0]+x_mem
                     self.memory_nodes.append(MemoryElement(name, True, position)) # Create memory nodes with a distinct name. TEMP naming system.
-                    if layer != blueprint[2]:
+                    if layer != blueprint[2]-1:
                         self.lines.append((position[0], position[1], position[2], position[0], position[1], position[2] + LAYER_HEIGHT))
-                    if layer != 0:
-                        self.lines.append((position[0], position[1], position[2], position[0], position[1], position[2] - LAYER_HEIGHT))
-                    if y_mem != blueprint[1]:
+                    if y_mem != blueprint[1]-1:
                         self.lines.append((position[0], position[1], position[2], position[0], position[1] + (PE_SIZE+GUTTER_WIDTH), position[2]))
-                    if y_mem != 0:
-                        self.lines.append((position[0], position[1], position[2], position[0], position[1] - (PE_SIZE+GUTTER_WIDTH), position[2]))
-                    if x_mem != blueprint[0]:
+                    if x_mem != blueprint[0]-1:
                         self.lines.append((position[0], position[1], position[2], position[0] + (PE_SIZE+GUTTER_WIDTH), position[1], position[2]))
-                    if x_mem != 0:
-                        self.lines.append((position[0], position[1], position[2], position[0] - (PE_SIZE+GUTTER_WIDTH), position[1], position[2]))
-        #print("Expected node count: " + str(blueprint[0]*blueprint[1]*blueprint[2]))
         return
 
     def find_distance(self, node_b, node_a):
@@ -122,151 +118,48 @@ class Mesh3D:
         if not self.lines:
             raise ValueError("No Mesh generated. Call gen_noc_layout() first.")
         
-        # Create the 3D line plot
         fig = go.Figure()
-        
-        # Red for X-direction, Orange for Y-direction, Green for Z-direction
-        orientation_colors = {
-            'x': 'red',
-            'y': 'orange', 
-            'z': 'green'
-        }
-        
-        # Group lines by both orientation and layer for individual control
-        lines_by_orientation_and_layer = {}
-        
-        for line in self.lines:
-            x1, y1, z1, x2, y2, z2,= line
-            
-            # Determine orientation by checking which coordinate varies
-            if abs(x1 - x2) > 1e-10:  # Line varies in X dimension
-                orientation = 'x'
-            elif abs(y1 - y2) > 1e-10:  # Line varies in Y dimension
-                orientation = 'y'
-            elif abs(z1 - z2) > 1e-10:  # Line varies in Z dimension
-                orientation = 'z'
-            ### TODO: FROM HERE DOWN, DISENTAGLE MEMORIES AND NODES.
-            key = (orientation)
-            if key not in lines_by_orientation_and_layer:
-                lines_by_orientation_and_layer[key] = []
-            lines_by_orientation_and_layer[key].append((x1, y1, z1, x2, y2, z2))
-        
-        orientation_names = {'x': 'X', 'y': 'Y', 'z': 'Z'}
-        for (orientation, layer), lines in sorted(lines_by_orientation_and_layer.items(), key=lambda x: (x[0][1], x[0][0])):
-            x_lines, y_lines, z_lines = [], [], []            
-            for line_data in lines:
-                x1, y1, z1, x2, y2, z2 = line_data
-                x_lines.extend([x1, x2, None])  # None creates breaks between lines
-                y_lines.extend([y1, y2, None])
-                z_lines.extend([z1, z2, None])
-            
-            # Use consistent line width for all orientations
-            base_width = 12
-            color = orientation_colors[orientation]
-            
-            fig.add_trace(go.Scatter3d(
-                x=x_lines,
-                y=y_lines,
-                z=z_lines,
-                mode='lines',
-                line=dict(
-                    color=color,
-                    width=max(base_width*(0.75**(layer-1)),1)
-                ),
-                name=f'Layer {layer} ({orientation_names[orientation]})',
-                hoverinfo='skip'
-            ))
-        
-        all_points = list(set(self.points))
-        if all_points:
-            # Collect all junction points and their sizes/colors for a single trace
-            all_x_points = []
-            all_y_points = []
-            all_z_points = []
-            all_sizes = []
-            all_colors = []
-            
-            # Create a mapping from junction points to the orientation of the line they sit at the center of
-            junction_center_orientations = {}
-            for line in self.lines:
-                x1, y1, z1, x2, y2, z2, layer = line
-                
-                # Determine line orientation
-                if abs(x1 - x2) > 1e-10:
-                    orientation = 'x'
-                elif abs(y1 - y2) > 1e-10:
-                    orientation = 'y'
-                elif abs(z1 - z2) > 1e-10:
-                    orientation = 'z'
-                else:
-                    continue
-                
-                # Calculate the midpoint of this line
-                midpoint = ((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
-                midpoint_key = (round(midpoint[0], 10), round(midpoint[1], 10), round(midpoint[2], 10))
-                
-                # Map this midpoint to the orientation of the line it's the center of
-                junction_center_orientations[midpoint_key] = orientation
-            
-            # Group points by layer and calculate sizes
-            points_by_layer = {}
-            for point_data in all_points:
-                point, layer = point_data
-                if layer not in points_by_layer:
-                    points_by_layer[layer] = []
-                points_by_layer[layer].append(point)
-            
-            base_size = 12  # Starting size for level 1 junctions
-            
-            # Add special origin junction at (0,0,0) first so it renders with proper depth
-            all_x_points.append(0)
-            all_y_points.append(0)
-            all_z_points.append(0)
-            all_sizes.append(base_size)
-            all_colors.append('white')
-            
-            # Collect all points into single arrays for one trace
-            for layer in sorted(points_by_layer.keys()):
-                points = points_by_layer[layer]
-                
-                # Calculate junction size: scale with line width
-                junction_size = base_size * (0.85 ** (layer - 1))  # Same scaling as line width
 
-                
-                # Add to combined arrays
-                for point in points:
-                    point_key = (round(point[0], 10), round(point[1], 10), round(point[2], 10))
+        x_lines = []
+        y_lines = []
+        z_lines = []
+        for line in self.lines:
+            x1, y1, z1, x2, y2, z2 = line
+            x_lines.extend([x1, x2, None])  # None creates breaks between lines
+            y_lines.extend([y1, y2, None])
+            z_lines.extend([z1, z2, None])
                     
-                    # Determine junction color based on the line it sits at the center of
-                    if point_key in junction_center_orientations:
-                        orientation = junction_center_orientations[point_key]
-                        color = orientation_colors[orientation]
-                    else:
-                        color = 'white'  # Fallback for points not at center of any line
-                                                
-                    all_x_points.append(point[0])
-                    all_y_points.append(point[1])
-                    all_z_points.append(point[2])
-                    all_sizes.append(junction_size)
-                    all_colors.append(color)
+        fig.add_trace(go.Scatter3d(
+            x=x_lines,
+            y=y_lines,
+            z=z_lines,
+            mode='lines',
+            line=dict(color="yellow", width = 2),
+            name='Routing Lines',
+            hoverinfo='skip'
+        ))
+        
+        if self.memory_nodes:
+            x_nodes = [node.position[0] for node in self.memory_nodes]
+            y_nodes = [node.position[1] for node in self.memory_nodes]
+            z_nodes = [node.position[2] for node in self.memory_nodes]
             
-            # Add all junctions (including origin) as a single trace
             fig.add_trace(go.Scatter3d(
-                x=all_x_points,
-                y=all_y_points,
-                z=all_z_points,
+                x=x_nodes,
+                y=y_nodes,
+                z=z_nodes,
                 mode='markers',
                 marker=dict(
-                    size=all_sizes,
-                    color=all_colors,
+                    size=8,
+                    color='blue',
                     opacity=0.8,
                     line=dict(width=0)  # Remove white outline
                 ),
-                name='Junctions',
+                name='Memory Nodes',
                 hoverinfo='x+y+z'
             ))
         
-        # Update layout for better visualization
+        # Set layout to standard
         fig.update_layout(
             title=dict(
                 text=title,
@@ -276,7 +169,7 @@ class Mesh3D:
             scene=dict(
                 xaxis=dict(
                     title=dict(text='X', font=dict(color='white')), 
-                    range=[-X_SIZE, X_SIZE],
+                    range=[-1.5*X_SIZE, 1.5*X_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -285,7 +178,7 @@ class Mesh3D:
                 ),
                 yaxis=dict(
                     title=dict(text='Y', font=dict(color='white')), 
-                    range=[-Y_SIZE, Y_SIZE],
+                    range=[-1.5*Y_SIZE, 1.5*Y_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -294,7 +187,7 @@ class Mesh3D:
                 ),
                 zaxis=dict(
                     title=dict(text='Z', font=dict(color='white')), 
-                    range=[-Z_SIZE, Z_SIZE],
+                    range=[-1.5*Z_SIZE, 1.5*Z_SIZE],
                     backgroundcolor='rgb(40, 40, 40)',
                     gridcolor='rgb(120, 120, 120)',
                     showbackground=True,
@@ -334,7 +227,6 @@ class HTree3D:
         self.colors = ['red', 'orange', 'green']  # Color cycle
         self.nodes = []
         self.memories = []
-
 
     def gen_noc_layout(self, blueprint: str) -> None:
         """

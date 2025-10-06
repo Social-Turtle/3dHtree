@@ -1,7 +1,7 @@
-
 import plotly.graph_objects as go
 from typing import Tuple
 import tempfile
+import math
 import webbrowser
 
 # TODO:
@@ -15,9 +15,9 @@ PE_SIZE = 10; #Side length of a PE
 LAYER_HEIGHT = 25;
 GUTTER_WIDTH = 1;
 # Set dimensions on the viewer window.
-X_SIZE = 250;
-Y_SIZE = 250;
-Z_SIZE = 250;
+X_SIZE =  0;
+Y_SIZE = 0;
+Z_SIZE = 0;
 
 class DataGraph():
     """
@@ -55,7 +55,6 @@ class Mesh3D:
     """
     def __init__(self):
         self.lines = []
-        self.nodes = []
         self.memory_nodes = []
 
     def find_corner(self, blueprint):
@@ -125,7 +124,7 @@ class Mesh3D:
         z_lines = []
         for line in self.lines:
             x1, y1, z1, x2, y2, z2 = line
-            x_lines.extend([x1, x2, None])  # None creates breaks between lines
+            x_lines.extend([x1, x2, None])
             y_lines.extend([y1, y2, None])
             z_lines.extend([z1, z2, None])
                     
@@ -134,7 +133,7 @@ class Mesh3D:
             y=y_lines,
             z=z_lines,
             mode='lines',
-            line=dict(color="yellow", width = 2),
+            line=dict(color="yellow", width = 1),
             name='Routing Lines',
             hoverinfo='skip'
         ))
@@ -223,7 +222,6 @@ class HTree3D:
     
     def __init__(self):
         self.lines = []  # Store all line segments as (x1,y1,z1, x2,y2,z2, layer)
-        self.points = []  # Store all points for reference
         self.colors = ['red', 'orange', 'green']  # Color cycle
         self.nodes = []
         self.memories = []
@@ -234,6 +232,7 @@ class HTree3D:
         """
         if len(blueprint) <= 0:
             return
+
         self._configurable_generate_level((0,0,0), blueprint, 0)
 
     def _configurable_generate_level(self,center, blueprint, layer) -> None:
@@ -243,55 +242,36 @@ class HTree3D:
         global LAYER_HEIGHT
         if blueprint == "":
             return
-        
-        """
-        if self.is_dimensional:
-            next_size = size * RATIO
-        elif len(blueprint) >= 3:
-            if (blueprint[2] == blueprint[0]):
-                next_size = size * 0.7071 
-            else:
-                next_size = size * 0.7937
-        else:
-            next_size = size * self.scale_factor
 
-        if len(blueprint) == 1:
-            add_nodes = 0
-        else:
-            add_nodes = layer + 1
-        x, y, z = center
-        half_size = size * 0.5
-        
         orientation = blueprint[0]
+        total_turns = 0
+        for ch in blueprint[0]:
+            if ch == orientation:
+                total_turns += 1
+
+        x = center[0]
+        y = center[1]
+        z = center[2]
+
         if orientation == '0': ### X DIRECTION ###
-            sub_side = (x, y-half_size, z)
-            pos_side = (x, y+half_size, z)
+            sub_side = (x, y, z)
+            pos_side = (x, y, z)
 
         elif orientation == '1': ### Y DIRECTION ###
-            sub_side = (x - half_size, y, z)
-            pos_side = (x + half_size, y, z)
+            sub_side = (x, y, z)
+            pos_side = (x , y, z)
+        
         elif orientation == '2': ### Z DIRECTION ###
-            if not self.is_dimensional:
-                sub_side = (x, y, z - half_size)
-                pos_side = (x, y, z + half_size)
-            else:
-                if layer == LAST_VERTICAL_LAYER:
-                    #print("Amending height for layer: " + str(layer))
-                    sub_side = (x, y, z - LAYER_HEIGHT)
-                    pos_side = (x, y, z)
-                    next_size = size
-                else:
-                    sub_side = (x, y, z - LAYER_HEIGHT*(2**(blueprint.count("2")-2)))
-                    pos_side = (x, y, z + LAYER_HEIGHT*(2**(blueprint.count("2")-2)))
-                    next_size = size
+            sub_side = (x, y, z)
+            pos_side = (x , y, z)
 
         ### Let's Make Some Recursive Calls! ###
 
-        self.add_line(sub_side,pos_side, layer, add_nodes)
-        self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
-        self._configurable_generate_level(pos_side, next_size, blueprint[1:], layer+1)
-        """
+        #self.add_line(sub_side,pos_side, layer, add_nodes)
+        #self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
+        #self._configurable_generate_level(pos_side, next_size, blueprint[1:], layer+1)
         return
+    
     def add_line(self, point1: Tuple[float, float, float], 
                  point2: Tuple[float, float, float], layer: int, max_layers: int) -> None:
         """Add a line segment to the tree."""
@@ -299,6 +279,12 @@ class HTree3D:
         # Store points with their associated layer for size scaling
         if layer < max_layers:
             self.points.extend([(point1, layer), (point2, layer)])
+
+    def find_distance(self, node_b, node_a):
+        return
+    
+    def compute_energy(node_b, node_a):
+        return
 
     def create_plotly_figure(self, title: str = "3D H-Tree Visualization", 
                            isometric: bool = False) -> go.Figure:

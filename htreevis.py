@@ -254,31 +254,41 @@ class HTree3D:
         z = center[2]
 
         if orientation == '0': ### X DIRECTION ###
-            sub_side = (x, y, z)
-            pos_side = (x, y, z)
+            length = ((PE_SIZE + GUTTER_WIDTH)* 2**(total_turns))/2
+            sub_side = (x+length, y, z)
+            pos_side = (x-length, y, z)
 
         elif orientation == '1': ### Y DIRECTION ###
-            sub_side = (x, y, z)
-            pos_side = (x , y, z)
+            length = ((PE_SIZE + GUTTER_WIDTH)* 2**(total_turns))/2
+            sub_side = (x, y+length, z)
+            pos_side = (x , y-length, z)
         
         elif orientation == '2': ### Z DIRECTION ###
-            sub_side = (x, y, z)
-            pos_side = (x , y, z)
+            if total_turns > 1:
+                length = (LAYER_HEIGHT* 2**(total_turns))/2
+                sub_side = (x, y, z+LAYER_HEIGHT)
+                pos_side = (x , y, z-LAYER_HEIGHT)
+            else:
+                # Last split, we need to handle our inefficiency here.
+                ######## TODO: ######################################################################## 
+                print("CANNOT HANDLE LAST VERTICAL RUN CORRECTLY.")
+                length = (LAYER_HEIGHT* 2**(total_turns))/2
+                sub_side = (x, y, z+LAYER_HEIGHT)
+                pos_side = (x , y, z-LAYER_HEIGHT)
 
-        ### Let's Make Some Recursive Calls! ###
 
-        #self.add_line(sub_side,pos_side, layer, add_nodes)
-        #self._configurable_generate_level(sub_side, next_size, blueprint[1:], layer+1)
-        #self._configurable_generate_level(pos_side, next_size, blueprint[1:], layer+1)
+        self.add_line(sub_side,pos_side, layer)
+        self._configurable_generate_level(sub_side, blueprint[1:], layer+1)
+        self._configurable_generate_level(pos_side, blueprint[1:], layer+1)
+        print("CREATE NODES AND MEMORIES")
         return
     
     def add_line(self, point1: Tuple[float, float, float], 
-                 point2: Tuple[float, float, float], layer: int, max_layers: int) -> None:
+                 point2: Tuple[float, float, float], layer) -> None:
         """Add a line segment to the tree."""
         self.lines.append((*point1, *point2, layer))
         # Store points with their associated layer for size scaling
-        if layer < max_layers:
-            self.points.extend([(point1, layer), (point2, layer)])
+        
 
     def find_distance(self, node_b, node_a):
         return
@@ -358,39 +368,7 @@ class HTree3D:
                 name=f'Layer {layer} ({orientation_names[orientation]})',
                 hoverinfo='skip'
             ))
-        
-        all_points = list(set(self.points))
-        if all_points:
-            # Collect all junction points and their sizes/colors for a single trace
-            all_x_points = []
-            all_y_points = []
-            all_z_points = []
-            all_sizes = []
-            all_colors = []
-            
-            # Create a mapping from junction points to the orientation of the line they sit at the center of
-            junction_center_orientations = {}
-            for line in self.lines:
-                x1, y1, z1, x2, y2, z2, layer = line
-                
-                # Determine line orientation
-                if abs(x1 - x2) > 1e-10:
-                    orientation = 'x'
-                elif abs(y1 - y2) > 1e-10:
-                    orientation = 'y'
-                elif abs(z1 - z2) > 1e-10:
-                    orientation = 'z'
-                else:
-                    continue
-                
-                # Calculate the midpoint of this line
-                midpoint = ((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2)
-                midpoint_key = (round(midpoint[0], 10), round(midpoint[1], 10), round(midpoint[2], 10))
-                
-                # Map this midpoint to the orientation of the line it's the center of
-                junction_center_orientations[midpoint_key] = orientation
-            
-            # Group points by layer and calculate sizes
+
             points_by_layer = {}
             for point_data in all_points:
                 point, layer = point_data

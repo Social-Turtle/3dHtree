@@ -9,15 +9,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm, BoundaryNorm, ListedColormap
 
-# Define symbolic variables
 A_sym, L_sym = sp.symbols('A L', real=True, positive=True)
 
-# Define your expression symbolically
 z_expr = sp.sqrt(A_sym * L_sym) / (sp.sqrt(A_sym) + (L_sym**(sp.Rational(3,2)) / 2))
 import matplotlib.pyplot as plt
 
-TILES = 1000
-LAYER_MAX = 25
+TILES = 1000000
+LAYER_MAX = 800
 
 class Plot3DFramework:
     """Framework for creating 3D plots and 2D heatmaps from XYZ data."""
@@ -126,6 +124,13 @@ class Plot3DFramework:
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
+        ax.set_ylim(bottom=1)
+
+        from matplotlib.ticker import MultipleLocator
+        y_ticks = ax.get_yticks()
+        if 1 not in y_ticks:
+            y_ticks = np.append([1], y_ticks[y_ticks > 1])
+            ax.set_yticks(y_ticks)
 
         from matplotlib.ticker import PercentFormatter
         cbar = fig.colorbar(im, ax=ax, label='Improvement')
@@ -138,6 +143,7 @@ class Plot3DFramework:
             ax.plot(A_line, L_cube_root, 'b--', linewidth=2, label='$L = A^{1/3}$')
             # Z = 1
             contour = ax.contour(X, Y, Z, levels=[1], colors='black', linewidths=2)
+
             from matplotlib.lines import Line2D
             custom_lines = [Line2D([0], [0], color='blue', linewidth=2),
                             Line2D([0], [0], color='black', linewidth=2)]
@@ -178,12 +184,12 @@ if __name__ == "__main__":
     plotter = Plot3DFramework(A, L, z)    
     
     norm = TwoSlopeNorm(vmin=vmin, vcenter=2.0, vmax=vmax)
-    plotter.plot_2d_heatmap(title="Winning by Layers", xlabel="Tile Count", ylabel="Number of Layers", cmap="plasma", interpolation="bilinear", norm=norm)
+    plotter.plot_2d_heatmap(title="Adding Layers to Reduce Wire Length", xlabel="Tile Count", ylabel="Number of Layers", cmap="plasma", interpolation="bilinear", norm=norm)
     
     binary_norm = BoundaryNorm([vmin, 1.0, vmax], ncolors=2)
     binary_cmap = create_binary_red_green_cmap()
-    plotter.plot_2d_heatmap(title="Winning by Layers", xlabel="Tile Count", ylabel="Number of Layers", cmap=binary_cmap, interpolation="nearest", norm=binary_norm)
+    plotter.plot_2d_heatmap(title="Adding Layers to Reduce Wire Length", xlabel="Tile Count", ylabel="Number of Layers", cmap=binary_cmap, interpolation="nearest", norm=binary_norm)
 
     gradient_norm = TwoSlopeNorm(vmin=vmin, vcenter=1.0, vmax=vmax)
     gradient_cmap = create_red_gradient_green_cmap()
-    plotter.plot_2d_heatmap(title="Winning by Layers", xlabel="Tile Count", ylabel="Number of Layers", cmap=gradient_cmap, interpolation="nearest", norm=gradient_norm)
+    plotter.plot_2d_heatmap(title="Adding Layers to Reduce Wire Length", xlabel="Tile Count", ylabel="Number of Layers", cmap=gradient_cmap, interpolation="nearest", norm=gradient_norm)
